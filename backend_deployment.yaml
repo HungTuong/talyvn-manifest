@@ -1,0 +1,129 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    type: deployment
+  name: backend-deployment
+spec:
+  selector:
+    matchLabels:
+      name: backend
+  strategy:
+    type: RollingUpdate
+  template:
+    metadata:
+      labels:
+        name: backend
+    spec:
+      serviceAccountName: cluster-sa
+      volumes:
+        - name: secrets-store-inline
+          csi:
+            driver: secrets-store.csi.k8s.io
+            readOnly: true
+            volumeAttributes:
+              secretProviderClass: secrets-store-csi
+      containers:
+        - name: taly-backend
+          image: XXXXXXXXXXXX.dkr.ecr.ap-southeast-1.amazonaws.com/backend:latest
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: PORT
+              valueFrom:
+                secretKeyRef:
+                  name: backendsecret
+                  key: port
+            - name: MONGO_URL
+              valueFrom:
+                secretKeyRef:
+                  name: backendsecret
+                  key: mongo_endpoint
+            - name: GOOGLE_AUTH_CLIENT_ID
+              valueFrom:
+                secretKeyRef:
+                  name: backendsecret
+                  key: google_client
+            - name: GOOGLE_AUTH_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: backendsecret
+                  key: google_client_secret
+            - name: GOOGLE_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: backendsecret
+                  key: google_api
+            - name: ADMIN_EMAIL
+              valueFrom:
+                secretKeyRef:
+                  name: backendsecret
+                  key: admin_email
+            - name: JWT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: backendsecret
+                  key: jwt
+            - name: FE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: backendsecret
+                  key: fe_url
+            - name: BE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: backendsecret
+                  key: be_url
+            - name: ADMIN_SESSION_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: backendsecret
+                  key: session_secret
+            - name: SENDGRID_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: backendsecret
+                  key: sendgrid_api
+            - name: SENDGRID_FROM
+              valueFrom:
+                secretKeyRef:
+                  name: backendsecret
+                  key: sendgrid_from
+            - name: AWS_REGION
+              valueFrom:
+                secretKeyRef:
+                  name: backendsecret
+                  key: region
+            - name: AWS_BUCKET_NAME
+              valueFrom:
+                secretKeyRef:
+                  name: backendsecret
+                  key: bucket_name
+          volumeMounts:
+            - name: secrets-store-inline
+              mountPath: "/mnt/secrets-store"
+              readOnly: true
+          resources:
+            limits:
+              cpu: 100m
+              memory: 200Mi
+            requests:
+              cpu: 100m
+              memory: 200Mi
+          ports:
+            - containerPort: 5000
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: backend-service
+  labels:
+    type: service
+spec:
+  type: NodePort
+  selector:
+    name: backend
+  ports:
+    - protocol: TCP
+      port: 5000
+      targetPort: 5000
